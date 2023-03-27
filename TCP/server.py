@@ -1,74 +1,68 @@
 import socket
 import hashlib
-import logging
+import os
 import datetime
 
-# Define host and port
-HOST = 'localhost'
-PORT = 8080
+HOST = '127.0.0.1'
+PORT = 5555
+FILES = {
+    '10MB.txt': 10485760,
+    '100MB.txt': 104857600,
+}
+LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-%S-log.txt'
 
-# Define filenames and paths
-FILE_10MB = '10MB.txt'
-FILE_100MB = '100MB.txt'
 
-# Define hash function
-HASH_FUNC = hashlib.sha256
+def handle_client(conn, addr, file_name):
+    with open(file_name, 'rb') as f:
+        data = f.read()
+        hash_obj = hashlib.sha256(data)
+        hash_hex = hash_obj.hexdigest()
+        conn.sendall(data)
+        ack = conn.recv(1024)
+        if ack == hash_hex.encode('utf-8'):
+            print(f'Successfully sent {file_name} to {addr}')
+            return True
+        else:
+            print(f'Error sending {file_name} to {addr}')
+            return False
 
-# Set up logging
-log_filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-log.txt')
-logging.basicConfig(filename=log_filename, level=logging.INFO)
 
-# Create a socket object
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def main():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen(25)
+    print(f'Server listening on {HOST}:{PORT}')
+    
+    while True:
+        conn, addr = server_socket.accept()
+        print(f'Connected by {addr}')
+        
+        if len(os.listdir()) == len(FILES):
+            conn.sendall(b'Server is full')
+            conn.close()
+            continue
+        
+        file_choice = conn.recv(1024).decode('utf-8')
+        if file_choice not in FILES:
+            conn.sendall(b'Invalid file choice')
+            conn.close()
+            continue
+        
+        file_size = FILES[file_choice]
+        conn.sendall(str(file_size).encode('utf-8'))
+        log_file_name = datetime.datetime.now().strftime(LOG_FILE_NAME_FORMAT)
+        with open(log_file_name, 'a') as log_file:
+            log_file.write(f'{addr} requested {file_choice} of size {file_size}\n')
+        
+        if handle_client(conn, addr, file_choice):
+            with open(log_file_name, 'a') as log_file:
+                log_file.write(f'Successfully sent {file_choice} of size {file_size} to {addr}\n')
+        else:
+            with open(log_file_name, 'a') as log_file:
+                log_file.write(f'Error sending {file_choice} of size {file_size} to {addr}\n')
+        
+        conn.close()
 
-# Bind the socket to the specified host and port
-server_socket.bind((HOST, PORT))
 
-# Listen for incoming connections
-server_socket.listen(25)
-
-print('Server listening on port', PORT)
-
-# Main loop
-while True:
-    # Accept incoming connection
-    client_socket, client_address = server_socket.accept()
-
-    logging.info(f'Connected by {client_address}')
-
-    # Receive data from client
-    data = client_socket.recv(1024).decode()
-
-    # Process data here...
-    if data == '10MB':
-        filename = FILE_10MB
-    elif data == '100MB':
-        filename = FILE_100MB
-    else:
-        logging.warning(f'Invalid request from {client_address}')
-        client_socket.sendall('Invalid request'.encode())
-        client_socket.close()
-        continue
-
-    # Get file size
-    file_size = os.path.getsize(filename)
-
-    # Calculate hash of file
-    with open(filename, 'rb') as f:
-        file_data = f.read()
-    file_hash = HASH_FUNC(file_data).hexdigest()
-
-    # Send response to client and time the transfer
-    start_time = datetime.datetime.now()
-    client_socket.sendall(f'{file_hash}\n{file_data.decode()}'.encode())
-    response = client_socket.recv(1024).decode()
-    end_time = datetime.datetime.now()
-
-    # Check if sending was accurate
-    if response == 'ACK':
-        logging.info(f'Sent {filename} ({file_size} bytes) to {client_address}. Transfer took {(end_time-start_time).total_seconds()} seconds.')
-    else:
-        logging.warning(f'Error sending {filename} ({file_size} bytes) to {client_address}. Transfer took {(end_time-start_time).total_seconds()} seconds.')
-
-    # Close the connection
-    client_socket.close()
+if __name__ == '__main__':
+    main()

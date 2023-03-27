@@ -1,70 +1,70 @@
 import socket
 import hashlib
 import os
-import random
-import string
 import datetime
-import logging
 
-# Define host and port
-HOST = 'localhost'
-PORT = 8080
+HOST = '127.0.0.1'
+PORT = 5555
+FILES = [
+    '10MB.txt',
+    '100MB.txt',
+]
+LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-%S-log.txt'
+ARCHIVE_FOLDER_NAME = 'ArchivosRecibidos'
 
-# Define filenames and paths
-FILE_10MB = '10MB.txt'
-FILE_100MB = '100MB.txt'
 
-# Define hash function
-HASH_FUNC = hashlib.sha256
+def receive_file(conn, file_size, file_name):
+    data_received = 0
+    with open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'wb') as f:
+        while data_received < file_size:
+            data = conn.recv(1024)
+            if not data:
+                break
+            f.write(data)
+            data_received += len(data)
+        f.flush()
+        hash_hex = hashlib.sha256(open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'rb').read()).hexdigest()
+        conn.sendall(hash_hex.encode('utf-8'))
+        
+        ack = conn.recv(1024)
+        if ack == b'Success':
+            return True
+        else:
+            return False
+        
 
-# Create a directory to store received files
-if not os.path.exists('ArchivosRecibidos'):
-    os.makedirs('ArchivosRecibidos')
+def main():
+    if not os.path.exists(ARCHIVE_FOLDER_NAME):
+        os.mkdir(ARCHIVE_FOLDER_NAME)
+    
+    for i in range(1, 26):
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn.connect((HOST, PORT))
+        print(f'Connected as Client {i}')
+        
+        file_choice = FILES[i % 2]
+        conn.sendall(file_choice.encode('utf-8'))
+        
+        file_size = int(conn.recv(1024).decode('utf-8'))
+        file_name = f'{i}-Prueba-{i % 2}.txt'
+        log_file_name = datetime.datetime.now().strftime(LOG_FILE_NAME_FORMAT)
+        with open(log_file_name, 'a') as log_file:
+            log_file.write(f'Client {i} requested {file_choice} of size {file_size} using {conn.getsockname()} to {conn.getpeername()}\n')
+        
+        start_time = datetime.datetime.now()
+        success = receive_file(conn, file_size, file_name)
+        end_time = datetime.datetime.now()
+        
+        with open(log_file_name, 'a') as log_file:
+            if success:
+                log_file.write(f'Client {i} successfully received {file_choice} of size {file_size} using {conn.getsockname()} to {conn.getpeername()} in {end_time - start_time}\n')
+                conn.sendall(b'Success')
+            else:
+                log_file.write(f'Client {i} error receiving {file_choice} of size {file_size} using {conn.getsockname()} to {conn.getpeername()} in {end_time - start_time}\n')
+                conn.sendall(b'Error')
+        
+        conn.close()
 
-# Set up logging
-log_filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-log.txt')
-logging.basicConfig(filename=log_filename, level=logging.INFO)
 
-# Main loop to generate 25 users and randomly request files
-for i in range(25):
-    # Generate a random request for a file
-    if random.randint(0, 1) == 0:
-        filename = FILE_10MB
-    else:
-        filename = FILE_100MB
-
-    # Create a socket object
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # Connect to the server
-    client_socket.connect((HOST, PORT))
-
-    # Get file hash
-    with open(filename, 'rb') as f:
-        file_data = f.read()
-    file_hash = HASH_FUNC(file_data).hexdigest()
-
-    # Send request to server and time the transfer
-    start_time = datetime.datetime.now()
-    client_socket.sendall(filename.encode())
-    response = client_socket.recv(1024).decode().split('\n')
-    end_time = datetime.datetime.now()
-
-    # Check file integrity
-    if response[0] == file_hash:
-        logging.info(f'Received {filename} ({len(response[1])} bytes) from server. Transfer took {(end_time-start_time).total_seconds()} seconds.')
-
-        # Save received file with a unique name
-        file_number = i + 1
-        connection_number = random.randint(1, 25)
-        new_filename = f'{file_number}-Prueba-{connection_number}.txt'
-        with open(os.path.join('ArchivosRecibidos', new_filename), 'w') as f:
-            f.write(response[1])
-    else:
-        logging.warning(f'Error receiving {filename} from server. Transfer took {(end_time-start_time).total_seconds()} seconds.')
-
-    # Send acknowledgement to server
-    client_socket.sendall('ACK'.encode())
-
-    # Close the connection
-    client_socket.close()
+if __name__ == '__main__':
+    main()
