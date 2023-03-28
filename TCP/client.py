@@ -3,7 +3,7 @@ import hashlib
 import os
 import datetime
 
-HOST = '127.0.0.1'
+HOST = '192.168.64.10'
 PORT = 5555
 FILES = [
     '10MB.txt',
@@ -23,14 +23,20 @@ def receive_file(conn, file_size, file_name):
             f.write(data)
             data_received += len(data)
         f.flush()
-        hash_hex = hashlib.sha256(open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'rb').read()).hexdigest()
-        conn.sendall(hash_hex.encode('utf-8'))
         
-        ack = conn.recv(1024)
-        if ack == b'Success':
-            return True
-        else:
-            return False
+        hash_hex = hashlib.sha256(open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'rb').read()).hexdigest()
+        
+        print(1)
+
+        expected_hash = conn.recv(1024).decode()
+        is_valid = hash_hex == expected_hash
+        
+        print(2)
+
+        conn.sendall(hash_hex.encode('utf-8'))
+        print(3)
+
+        return is_valid
         
 
 def main():

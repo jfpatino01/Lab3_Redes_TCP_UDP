@@ -18,7 +18,7 @@ def handle_client(conn, addr, file_name):
         hash_obj = hashlib.sha256(data)
         hash_hex = hash_obj.hexdigest()
         conn.sendall(data)
-        conn.sendall(hash_hex)
+        conn.sendall(hash_hex.encode('utf-8'))
         ack = conn.recv(1024)
         if ack == hash_hex.encode('utf-8'):
             print(f'Successfully sent {file_name} to {addr}')
