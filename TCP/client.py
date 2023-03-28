@@ -3,49 +3,68 @@ import hashlib
 import os
 import datetime
 
-# Set up the TCP connection
-HOST = '192.168.64.10' # Replace with the IP address of your server
-PORT = 5555 # Replace with the port number of your server
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((HOST, PORT))
+HOST = '127.0.0.1'
+PORT = 5555
+FILES = [
+    '10MB.txt',
+    '100MB.txt',
+]
+LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-%S-log.txt'
+ARCHIVE_FOLDER_NAME = 'ArchivosRecibidos'
 
-# Set up the folder for received files
-if not os.path.exists('ArchivosRecibidos'):
-    os.makedirs('ArchivosRecibidos')
 
-# Set up the log file
-log_filename = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-log.txt')
-log_file = open(log_filename, 'w')
+def receive_file(conn, file_size, file_name):
+    data_received = 0
+    with open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'wb') as f:
+        while data_received < file_size:
+            data = conn.recv(1024)
+            if not data:
+                break
+            f.write(data)
+            data_received += len(data)
+        f.flush()
+        hash_hex = hashlib.sha256(open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'rb').read()).hexdigest()
+        conn.sendall(hash_hex.encode('utf-8'))
+        
+        ack = conn.recv(1024)
+        if ack == b'Success':
+            return True
+        else:
+            return False
+        
 
-# Generate random requests for files
-for i in range(25):
+def main():
+    if not os.path.exists(ARCHIVE_FOLDER_NAME):
+        os.mkdir(ARCHIVE_FOLDER_NAME)
     
-    # Send the request to the server
-    request = i % 2
-    print(request)
-    client_socket.send(request.encode('utf-8'))
+    for i in range(1, 26):
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        conn.connect((HOST, PORT))
+        print(f'Connected as Client {i}')
+        
+        file_choice = FILES[i % 2]
+        conn.sendall(file_choice.encode('utf-8'))
+        
+        file_size = int(conn.recv(1024).decode('utf-8'))
+        file_name = f'{i}-Prueba-{i % 2}.txt'
+        log_file_name = datetime.datetime.now().strftime(LOG_FILE_NAME_FORMAT)
+        with open(log_file_name, 'a') as log_file:
+            log_file.write(f'Client {i} requested {file_choice} of size {file_size} using {conn.getsockname()} to {conn.getpeername()}\n')
+        
+        start_time = datetime.datetime.now()
+        success = receive_file(conn, file_size, file_name)
+        end_time = datetime.datetime.now()
+        
+        with open(log_file_name, 'a') as log_file:
+            if success:
+                log_file.write(f'Client {i} successfully received {file_choice} of size {file_size} using {conn.getsockname()} to {conn.getpeername()} in {end_time - start_time}\n')
+                conn.sendall(b'Success')
+            else:
+                log_file.write(f'Client {i} error receiving {file_choice} of size {file_size} using {conn.getsockname()} to {conn.getpeername()} in {end_time - start_time}\n')
+                conn.sendall(b'Error')
+        
+        conn.close()
 
-    # Receive the file from the server
-    file_size = int(client_socket.recv(1024).decode())
-    file_data = b''
-    while len(file_data) < file_size:
-        data = client_socket.recv(1024)
-        file_data += data
 
-    # Check the integrity of the received file
-    received_hash = hashlib.md5(file_data).hexdigest()
-    expected_hash = client_socket.recv(1024).decode()
-    is_valid = received_hash == expected_hash
-
-    # Save the file and rename it
-    filename = f"{i+1}-Prueba-{filename}"
-    with open(os.path.join('ArchivosRecibidos', filename), 'wb') as f:
-        f.write(file_data)
-
-    # Log the information about the transfer
-    log_line = f"{filename}\t{file_size}\t{client_socket.getpeername()}\t{is_valid}\n"
-    log_file.write(log_line)
-
-# Close the log file and the socket
-log_file.close()
-client_socket.close()
+if __name__ == '__main__':
+    main()
