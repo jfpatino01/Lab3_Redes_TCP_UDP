@@ -3,13 +3,13 @@ import hashlib
 import os
 import datetime
 
-HOST = '192.168.64.10'
+HOST = '127.0.0.1'
 PORT = 5555
 FILES = {
     '10MB.txt': 10485760,
     '100MB.txt': 104857600,
 }
-LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-%S-log.txt'
+LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-%S-Server-log.txt'
 
 
 def handle_client(conn, addr, file_name):
@@ -18,13 +18,14 @@ def handle_client(conn, addr, file_name):
         hash_obj = hashlib.sha256(data)
         hash_hex = hash_obj.hexdigest()
         conn.sendall(data)
-        conn.sendall(hash_hex.encode('utf-8'))
         ack = conn.recv(1024)
         if ack == hash_hex.encode('utf-8'):
+            conn.sendall('Success'.encode('utf-8'))
             print(f'Successfully sent {file_name} to {addr}')
             return True
         else:
             print(f'Error sending {file_name} to {addr}')
+            conn.sendall('Failure'.encode('utf-8'))
             return False
 
 
@@ -35,6 +36,7 @@ def main():
     print(f'Server listening on {HOST}:{PORT}')
     
     while True:
+        
         conn, addr = server_socket.accept()
         print(f'Connected by {addr}')
         

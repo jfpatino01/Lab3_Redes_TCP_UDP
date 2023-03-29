@@ -2,10 +2,10 @@ import os
 import random
 
 # Define the size of the file in bytes
-size = 100 * 1024 * 1024
+size = 10 * 1024 * 1024
 
 # Define the path and filename for the new file
-filename = "100MB.txt"
+filename = "250MB.txt"
 
 # Generate random data to fill the file
 data = bytearray(os.urandom(size))
