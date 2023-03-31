@@ -1,2 +1,0 @@
-Client 2 requested 250MB.txt of size 10485760 using ('127.0.0.1', 64922) to ('127.0.0.1', 5555)
-Client 2 error receiving 250MB.txt of size 10485760 using ('127.0.0.1', 64922) to ('127.0.0.1', 5555) in 0:00:00.208548
