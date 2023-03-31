@@ -2,7 +2,7 @@ import os
 import random
 
 # Define the size of the file in bytes
-size = 10 * 1024 * 1024
+size = 250 * 1024 * 1024
 
 # Define the path and filename for the new file
 filename = "250MB.txt"
