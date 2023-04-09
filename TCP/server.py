@@ -6,36 +6,29 @@ import datetime
 HOST = '127.0.0.1'
 PORT = 5555
 FILES = {
-    '250MB.txt': 10485760,
+    '250MB.txt': 262144000,
     '100MB.txt': 104857600,
 }
 LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-Server-log.txt'
 connections = []
-MAX_CONNECTIONS = 25
+MAX_CONNECTIONS = 1
 
 
 def handle_client(conn, addr, file_name):
     with open(file_name, 'rb') as f:
         data = f.read()
+        print(len(data))
         hash_obj = hashlib.sha256(data)
         hash_hex = hash_obj.hexdigest()
 
-    chunk_size = 1 * 1024 * 1024  # 1 MB
+    chunk_size = 1024 * 1024 * 10  #10 MB
     with open(file_name, 'rb') as f:
         while True:
             chunk = f.read(chunk_size)
             if not chunk:
                 break
-            try:
-                conn.send(chunk)
-            except BrokenPipeError:
-                print(f"Client {addr} disconnected unexpectedly")
-                while True:
-                    try:
-                        conn.send(chunk)
-                        break
-                    except BrokenPipeError:
-                        continue
+            print(len(chunk))
+            conn.sendall(chunk)
 
         ack = conn.recv(1024)
         if ack == hash_hex.encode('utf-8'):
