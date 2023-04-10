@@ -65,10 +65,14 @@ def main():
                 log_file_name = datetime.datetime.now().strftime(LOG_FILE_NAME_FORMAT)
                 with open(log_file_name, 'a') as log_file:
                     log_file.write(f'{addr} requested {file_choice} of size {file_size}\n')
+
+                    start_time = datetime.datetime.now()
                     if handle_client(conn, addr, file_choice):
-                        log_file.write(f'Successfully sent {file_choice} of size {file_size} to {addr}\n')
+                        end_time = datetime.datetime.now()
+                        log_file.write(f'Successfully sent {file_choice} of size {file_size} to {addr} in {end_time - start_time}\n')
                     else:
-                        log_file.write(f'Error sending {file_choice} of size {file_size} to {addr}\n')
+                        end_time = datetime.datetime.now()
+                        log_file.write(f'Error sending {file_choice} of size {file_size} to {addr} in {end_time - start_time}\n')
                 connection_counter -= 1
                 conn.close()
 

@@ -4,7 +4,7 @@ import os
 import datetime
 import threading
 
-HOST = '127.0.0.1'
+HOST = '192.168.0.10'
 PORT = 5555
 FILES = [
     '250MB.txt',
@@ -12,7 +12,7 @@ FILES = [
 ]
 LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-Client-log.txt'
 ARCHIVE_FOLDER_NAME = 'ArchivosRecibidos'
-BUFFER_SIZE = 1024 * 1024 * 250
+BUFFER_SIZE = 1024 * 1024 * 10
 
 def receive_file(conn, file_size, file_name):
     data_received = 0
@@ -70,7 +70,7 @@ if not os.path.exists(ARCHIVE_FOLDER_NAME):
     os.mkdir(ARCHIVE_FOLDER_NAME)
 j = input("Enter a value for j: ")
 threads = []
-for i in range(1, 26):
+for i in range(1, 6):
     t = threading.Thread(target=clientrun, args=(i, j))
     t.start()
     threads.append(t)
