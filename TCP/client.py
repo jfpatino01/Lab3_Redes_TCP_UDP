@@ -19,14 +19,10 @@ def receive_file(conn, file_size, file_name):
     with open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'wb') as f:
         while data_received < file_size:
             data = conn.recv(BUFFER_SIZE)
-            print('falta:', file_size-data_received)
-            print('llego:', len(data))
             if not data:
                 break
             f.write(data)
             data_received += len(data)
-        print('tenemos en ttoal:', data_received)
-        print('lo esperado es: ', file_size)
         f.flush()
         hash_hex = hashlib.sha256(open(os.path.join(ARCHIVE_FOLDER_NAME, file_name), 'rb').read()).hexdigest()
         conn.sendall(hash_hex.encode('utf-8'))
@@ -74,7 +70,7 @@ if not os.path.exists(ARCHIVE_FOLDER_NAME):
     os.mkdir(ARCHIVE_FOLDER_NAME)
 j = input("Enter a value for j: ")
 threads = []
-for i in range(1, 2):
+for i in range(1, 26):
     t = threading.Thread(target=clientrun, args=(i, j))
     t.start()
     threads.append(t)

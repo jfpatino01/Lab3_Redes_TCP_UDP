@@ -11,13 +11,12 @@ FILES = {
 }
 LOG_FILE_NAME_FORMAT = '%Y-%m-%d-%H-%M-Server-log.txt'
 connections = []
-MAX_CONNECTIONS = 1
+MAX_CONNECTIONS = 25
 
 
 def handle_client(conn, addr, file_name):
     with open(file_name, 'rb') as f:
         data = f.read()
-        print(len(data))
         hash_obj = hashlib.sha256(data)
         hash_hex = hash_obj.hexdigest()
 
@@ -27,7 +26,6 @@ def handle_client(conn, addr, file_name):
             chunk = f.read(chunk_size)
             if not chunk:
                 break
-            print(len(chunk))
             conn.sendall(chunk)
 
         ack = conn.recv(1024)
