@@ -4,7 +4,7 @@ import os
 import datetime
 import threading
 
-HOST = '192.168.0.10'
+HOST = '192.168.0.7'
 PORT = 5555
 FILES = [
     '250MB.txt',
@@ -70,7 +70,7 @@ if not os.path.exists(ARCHIVE_FOLDER_NAME):
     os.mkdir(ARCHIVE_FOLDER_NAME)
 j = input("Enter a value for j: ")
 threads = []
-for i in range(1, 6):
+for i in range(1, 11):
     t = threading.Thread(target=clientrun, args=(i, j))
     t.start()
     threads.append(t)
